@@ -1,0 +1,64 @@
+---
+title: "MessAroundData"
+author: "Jason Gardner"
+date: "January 25, 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library (ggplot2)
+library (gridExtra)
+df=read.csv('finalFires.csv')
+dim(df)
+dur=as.numeric(as.Date(df$CONT_DATE,"%Y-%m-%d") - as.Date(df$DISCOVERY_DATE,"%Y-%m-%d"))
+df$duration=dur
+max_length=max(dur)
+max_length
+match(max_length,df$duration)
+write.csv(df,'finalFirescleaned.csv')
+```
+```{r}
+bincode=replicate(length(dur),1)
+count=0
+for (types in df$FIRE_SIZE_CLASS){
+  count=count+1
+  if (types=='A' || types=='B'){
+    bincode[count]=0
+  }
+}
+df$threat=bincode
+zeros=subset(df,df$threat==0)
+ones=subset(df,df$threat==1)
+zeros$dens=zeros$duration/(length(zeros$duration))
+ones$dens=ones$duration/(length(ones$duration))
+```
+
+```{r}
+non_hist<-ggplot(zeros, aes(zeros$duration)) + 
+  geom_density() + xlim(2,500) + ylim(0,.1)
+scary_hist<-ggplot(ones, aes(ones$duration)) + 
+  geom_density() + xlim(2,500) + ylim(0,.1)
+grid.arrange(non_hist, scary_hist, ncol=1)
+```
+```{r}
+par(mfrow=c(2,1))
+non_hist<-hist(zeros$duration, freq=FALSE)
+scary_hist<-hist(ones$duration, freq=FALSE)
+```
+```{r}
+par(mfrow=c(1,2))
+zeros_sample=sample(zeros$duration, size=length(ones$duration), replace=F)
+boxzero=boxplot(zeros_sample,main='Non-Threat Sample',ylab='Number of Days')
+boxone=boxplot(ones$duration,main='Threat')
+mtext("Durations of Fires Based on Threat Possibility", side = 3, line = -20, outer = TRUE)
+```
+```{r}
+barplot(c(mean(zeros$duration),mean(ones$duration)),main='Average Duration of Fires Labeled as Non-Threat or Threat',names.arg=c('Non-Threat','Threat'),ylab='Number of Days',col=c('green','red'))
+text(0.7, 1.1, paste0('Mean: ',round(mean(zeros$duration),2),'   Count: ',length(zeros$duration)))
+text(1.9, 1.1, paste0('Mean: ',round(mean(ones$duration),2),'   Count: ',length(ones$duration)))
+```
+
